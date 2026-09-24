@@ -237,3 +237,30 @@ input, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .card {
+    padding: 1.25rem !important;
+  }
+  .p-6 {
+    padding: 1rem !important;
+  }
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  .text-4xl {
+    font-size: 2rem !important;
+  }
+  .text-3xl {
+    font-size: 1.75rem !important;
+  }
+  .text-2xl {
+    font-size: 1.5rem !important;
+  }
+  .input-field {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+  }
+}

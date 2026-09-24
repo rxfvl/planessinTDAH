@@ -97,7 +97,7 @@ export default function PlanDetail({ user }) {
         <p className="text-muted text-lg">{plan.description}</p>
       </div>
 
-      <div className="grid gap-12" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem' }}>
+      <div className="grid gap-12" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '4rem' }}>
         
         {/* Lado Izquierdo: Propuestas */}
         <div>

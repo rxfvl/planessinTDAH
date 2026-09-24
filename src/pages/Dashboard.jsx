@@ -11,6 +11,10 @@ export default function Dashboard({ user }) {
   const [plans, setPlans] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newPlan, setNewPlan] = useState({ name: '', description: '', startDate: '', endDate: '' });
+  
+  const [dayPlans, setDayPlans] = useState([]);
+  const [showDayModal, setShowDayModal] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToPlans(setPlans);
@@ -62,7 +66,7 @@ export default function Dashboard({ user }) {
         </button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      <div className="grid gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem' }}>
         
         {/* Left Column - Plans */}
         <div style={{ gridColumn: 'span 2' }}>
@@ -114,17 +118,20 @@ export default function Dashboard({ user }) {
           </div>
         </div>
 
-        {/* Right Column - Calendar */}
-        <div>
+        <div style={{ marginTop: '2rem' }}>
           <h2 className="text-xl font-semibold mb-4 text-green">Calendario</h2>
-          <Calendar plans={plans} />
+          <Calendar plans={plans} onDateClick={(plansOnDay, day) => {
+            setDayPlans(plansOnDay);
+            setSelectedDay(day);
+            setShowDayModal(true);
+          }} />
         </div>
       </div>
 
       {/* Modal Create Plan */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div className="card glass w-full max-w-md m-4 animate-fade-in" style={{ backgroundColor: 'var(--surface-color)' }}>
+          <div className="card glass w-full m-4 animate-fade-in" style={{ backgroundColor: 'var(--surface-color)', maxWidth: '500px', width: '100%' }}>
             <h2 className="text-2xl font-bold mb-4">Crear Nuevo Plan</h2>
             <form onSubmit={handleCreatePlan}>
               <div className="input-group">
@@ -150,6 +157,47 @@ export default function Dashboard({ user }) {
                 <button type="submit" className="btn btn-green">Crear</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Day Info */}
+      {showDayModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div className="card glass w-full m-4 animate-fade-in flex flex-col gap-4" style={{ backgroundColor: 'var(--surface-color)', maxHeight: '90vh', overflowY: 'auto', maxWidth: '500px', width: '100%' }}>
+            <h2 className="text-2xl font-bold border-b border-border-color pb-3 mb-2 text-pink">
+              {selectedDay ? format(selectedDay, "d 'de' MMMM", { locale: es }) : ''}
+            </h2>
+            
+            <div className="flex flex-col gap-4">
+              {dayPlans.map(plan => {
+                const accepted = (plan.proposals || []).filter(p => p.status === 'accepted');
+                
+                return (
+                  <div key={plan.id} className="card bg-surface-light p-4 flex flex-col gap-3 border border-border-color" style={{ padding: '1.25rem' }}>
+                    <h3 className="text-xl font-bold text-main">{plan.name}</h3>
+                    <p className="text-muted text-sm">{plan.description}</p>
+                    
+                    {accepted.length > 0 && (
+                      <div className="mt-2">
+                        <h4 className="text-xs font-semibold text-green uppercase tracking-wider mb-2">Aprobadas:</h4>
+                        <ul className="list-disc list-inside text-sm space-y-1 text-main">
+                          {accepted.map(p => <li key={p.id}>{p.text}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    <Link to={`/plan/${plan.id}`} className="btn btn-outline text-center mt-3 text-sm py-2">
+                      Ir al Plan
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-end mt-2">
+              <button onClick={() => setShowDayModal(false)} className="btn btn-outline">Cerrar</button>
+            </div>
           </div>
         </div>
       )}

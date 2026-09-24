@@ -43,15 +43,21 @@ export default function Calendar({ plans, onDateClick }) {
         ))}
         
         {days.map(day => {
-          const hasPlan = plans.some(p => {
-            const planDate = new Date(p.startDate);
-            return isSameDay(planDate, day);
+          const plansOnDay = plans.filter(p => {
+            const start = new Date(p.startDate);
+            start.setHours(0,0,0,0);
+            const end = p.endDate ? new Date(p.endDate) : start;
+            end.setHours(23,59,59,999);
+            return day >= start && day <= end;
           });
+          const hasPlan = plansOnDay.length > 0;
 
           return (
             <button
               key={day.toString()}
-              onClick={() => onDateClick && onDateClick(day)}
+              onClick={() => {
+                if (hasPlan && onDateClick) onDateClick(plansOnDay, day);
+              }}
               className={`btn-outline ${hasPlan ? 'text-pink border-pink' : ''}`}
               style={{
                 padding: '0.5rem 0',
