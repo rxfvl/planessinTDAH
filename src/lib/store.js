@@ -28,60 +28,54 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
 const getLocal = (key) => JSON.parse(localStorage.getItem(key)) || [];
 const setLocal = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
-export const subscribeToPlans = (callback) => {
+// Generic collection helpers (Firestore, with localStorage fallback)
+const subscribe = (col, callback) => {
   if (useFirebase) {
-    const q = query(collection(db, "plans"));
-    return onSnapshot(q, (snapshot) => {
-      const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(plans);
+    return onSnapshot(query(collection(db, col)), (snapshot) => {
+      callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-  } else {
-    // Local storage mock
-    callback(getLocal("plans"));
-    // Reactivity for mock across tabs
-    const listener = () => callback(getLocal("plans"));
-    window.addEventListener('storage', listener);
-    return () => window.removeEventListener('storage', listener);
   }
+  callback(getLocal(col));
+  const listener = () => callback(getLocal(col));
+  window.addEventListener('storage', listener);
+  return () => window.removeEventListener('storage', listener);
 };
 
-export const createPlan = async (planData) => {
-  if (useFirebase) {
-    await addDoc(collection(db, "plans"), planData);
-  } else {
-    await delay(MOCK_DELAY);
-    const plans = getLocal("plans");
-    const newPlan = { id: Date.now().toString(), ...planData };
-    setLocal("plans", [...plans, newPlan]);
-    window.dispatchEvent(new Event('storage'));
-    return newPlan;
-  }
+const add = async (col, data) => {
+  if (useFirebase) return addDoc(collection(db, col), data);
+  await delay(MOCK_DELAY);
+  setLocal(col, [...getLocal(col), { id: Date.now().toString(), ...data }]);
+  window.dispatchEvent(new Event('storage'));
 };
 
-export const updatePlan = async (planId, updates) => {
-  if (useFirebase) {
-    const planRef = doc(db, "plans", planId);
-    await updateDoc(planRef, updates);
-  } else {
-    await delay(MOCK_DELAY);
-    let plans = getLocal("plans");
-    plans = plans.map(p => p.id === planId ? { ...p, ...updates } : p);
-    setLocal("plans", plans);
-    window.dispatchEvent(new Event('storage'));
-  }
+const update = async (col, id, updates) => {
+  if (useFirebase) return updateDoc(doc(db, col, id), updates);
+  await delay(MOCK_DELAY);
+  setLocal(col, getLocal(col).map(x => x.id === id ? { ...x, ...updates } : x));
+  window.dispatchEvent(new Event('storage'));
 };
 
-export const deletePlan = async (planId) => {
-  if (useFirebase) {
-    await deleteDoc(doc(db, "plans", planId));
-  } else {
-    await delay(MOCK_DELAY);
-    let plans = getLocal("plans");
-    plans = plans.filter(p => p.id !== planId);
-    setLocal("plans", plans);
-    window.dispatchEvent(new Event('storage'));
-  }
+const remove = async (col, id) => {
+  if (useFirebase) return deleteDoc(doc(db, col, id));
+  await delay(MOCK_DELAY);
+  setLocal(col, getLocal(col).filter(x => x.id !== id));
+  window.dispatchEvent(new Event('storage'));
 };
+
+export const subscribeToPlans = (cb) => subscribe("plans", cb);
+export const createPlan = (data) => add("plans", data);
+export const updatePlan = (id, updates) => update("plans", id, updates);
+export const deletePlan = (id) => remove("plans", id);
+
+// Banco global de ideas descartadas
+export const subscribeToIdeas = (cb) => subscribe("ideas", cb);
+export const addIdea = (data) => add("ideas", data);
+export const deleteIdea = (id) => remove("ideas", id);
+
+// Planes personales (cada uno los suyos, visibles en el calendario)
+export const subscribeToPersonalPlans = (cb) => subscribe("personalPlans", cb);
+export const createPersonalPlan = (data) => add("personalPlans", data);
+export const deletePersonalPlan = (id) => remove("personalPlans", id);
 
 // Auth replaced by simple LocalStorage identity
 export const setIdentity = (userName) => {

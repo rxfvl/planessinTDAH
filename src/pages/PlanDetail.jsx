@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { subscribeToPlans, updatePlan } from '../lib/store';
-import { ArrowLeft, Check, X, ThumbsUp, Trash2, RotateCcw, ListTodo } from 'lucide-react';
+import { subscribeToPlans, updatePlan, addIdea, subscribeToIdeas, deleteIdea } from '../lib/store';
+import { ArrowLeft, Check, X, ThumbsUp, Trash2, RotateCcw, ListTodo, Pencil } from 'lucide-react';
 
 export default function PlanDetail({ user }) {
   const { id } = useParams();
   const [plan, setPlan] = useState(null);
   const [newProp, setNewProp] = useState('');
   const [newReq, setNewReq] = useState('');
+  const [ideas, setIdeas] = useState([]);
+  const [editing, setEditing] = useState(null); // { id, text }
+
+  useEffect(() => subscribeToIdeas(setIdeas), []);
 
   useEffect(() => {
     const unsubscribe = subscribeToPlans((plans) => {
@@ -54,14 +58,46 @@ export default function PlanDetail({ user }) {
   };
 
   const handleDiscard = async (propId) => {
-    const updated = proposals.map(p => p.id === propId ? { ...p, status: 'discarded' } : p);
-    await updatePlan(plan.id, { proposals: updated });
+    const prop = proposals.find(p => p.id === propId);
+    await addIdea({ text: prop.text, fromPlanId: plan.id, fromPlanName: plan.name, discardedBy: user.uid, createdAt: new Date().toISOString() });
+    await updatePlan(plan.id, { proposals: proposals.filter(p => p.id !== propId) });
+  };
+
+  const addIdeaToPlan = async (idea) => {
+    const proposal = { id: Date.now().toString(), text: idea.text, votes: [user.uid], status: 'pending' };
+    await updatePlan(plan.id, { proposals: [...proposals, proposal] });
+    await deleteIdea(idea.id);
   };
 
   const handleRecover = async (propId) => {
     const updated = proposals.map(p => p.id === propId ? { ...p, status: 'pending', votes: [user.uid] } : p);
     await updatePlan(plan.id, { proposals: updated });
   };
+
+  const saveEdit = async () => {
+    const text = editing.text.trim();
+    if (text) await updatePlan(plan.id, { proposals: proposals.map(p => p.id === editing.id ? { ...p, text } : p) });
+    setEditing(null);
+  };
+
+  const proposalText = (p, className) => editing?.id === p.id ? (
+    <input
+      autoFocus
+      className="input-field flex-1"
+      style={{ padding: '0.4rem 0.75rem', fontSize: '1rem' }}
+      value={editing.text}
+      onChange={e => setEditing({ ...editing, text: e.target.value })}
+      onBlur={saveEdit}
+      onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(null); }}
+    />
+  ) : (
+    <span className={`flex-1 ${className}`}>
+      {p.text}
+      <button onClick={() => setEditing({ id: p.id, text: p.text })} className="icon-btn" style={{ padding: '0.25rem', marginLeft: '0.4rem' }} title="Editar">
+        <Pencil size={14} />
+      </button>
+    </span>
+  );
 
   const handleHardDelete = async (propId) => {
     const updated = proposals.filter(p => p.id !== propId);
@@ -88,8 +124,8 @@ export default function PlanDetail({ user }) {
 
   return (
     <div className="p-6 max-w-4xl mx-auto pb-20">
-      <Link to="/" className="inline-flex items-center gap-2 text-muted hover:text-pink mb-6 transition-colors">
-        <ArrowLeft size={20} /> Volver al Dashboard
+      <Link to="/planes" className="inline-flex items-center gap-2 text-muted hover:text-pink mb-6 transition-colors">
+        <ArrowLeft size={20} /> Volver a planes
       </Link>
 
       <div className="card glass mb-12 border-t-4" style={{ borderTopColor: 'var(--accent-green)' }}>
@@ -116,6 +152,17 @@ export default function PlanDetail({ user }) {
             <button type="submit" className="btn btn-pink px-4">Añadir</button>
           </form>
 
+          {ideas.length > 0 && (
+            <div className="mb-6">
+              <div className="text-xs text-muted mb-2 uppercase">Del banco de ideas</div>
+              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                {ideas.slice(0, 8).map(i => (
+                  <button key={i.id} onClick={() => addIdeaToPlan(i)} className="badge badge-violet" title="Añadir al plan">+ {i.text}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Propuestas Pendientes */}
           <div className="mb-8">
             <h3 className="text-lg font-medium mb-4 text-muted">Votando ({pendingProps.length})</h3>
@@ -125,7 +172,7 @@ export default function PlanDetail({ user }) {
                 return (
                   <div key={p.id} className="card bg-surface-light p-3 flex flex-col gap-1 border border-border-color" style={{ padding: '1rem', borderRadius: '12px' }}>
                     <div className="flex justify-between items-center w-full">
-                      <span className="flex-1 font-medium">{p.text}</span>
+                      {proposalText(p, 'font-medium')}
                       <div className="flex gap-2">
                         <button onClick={() => handleVote(p.id)} className={`btn-outline p-2 rounded-full transition-all`} title="Votar a favor" style={{ padding: '0.5rem', borderColor: myVote ? 'var(--accent-green)' : '', color: myVote ? 'var(--accent-green)' : '', backgroundColor: myVote ? 'rgba(0, 230, 118, 0.1)' : 'transparent' }}>
                           <ThumbsUp size={16} />
@@ -187,7 +234,7 @@ export default function PlanDetail({ user }) {
             ) : (
               <ul className="list-disc list-inside space-y-2">
                 {acceptedProps.map(p => (
-                   <li key={p.id} className="text-lg font-medium text-main">{p.text}</li>
+                   <li key={p.id} className="text-lg font-medium text-main">{proposalText(p, '')}</li>
                 ))}
               </ul>
             )}

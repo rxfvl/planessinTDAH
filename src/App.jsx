@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import Plans from './pages/Plans';
+import Ideas from './pages/Ideas';
+import Personal from './pages/Personal';
 import PlanDetail from './pages/PlanDetail';
 import Login from './pages/Login';
 import { listenToIdentity } from './lib/store';
-import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -31,8 +34,13 @@ function App() {
       <div className="min-h-screen">
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-          <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-          <Route path="/plan/:id" element={user ? <PlanDetail user={user} /> : <Navigate to="/login" />} />
+          <Route element={user ? <Layout user={user} /> : <Navigate to="/login" />}>
+            <Route path="/" element={<Home user={user} />} />
+            <Route path="/planes" element={<Plans user={user} />} />
+            <Route path="/ideas" element={<Ideas user={user} />} />
+            <Route path="/personales" element={<Personal user={user} />} />
+            <Route path="/plan/:id" element={<PlanDetail user={user} />} />
+          </Route>
         </Routes>
       </div>
     </Router>

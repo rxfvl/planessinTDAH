@@ -1,76 +1,72 @@
-import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function Calendar({ plans, onDateClick }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [days, setDays] = useState([]);
+// item: { id, name, start, end, kind: 'joint' | 'mine' | 'other', plan? } (fechas 'yyyy-MM-dd')
+export const itemsOnDay = (items, day) => {
+  const d = format(day, 'yyyy-MM-dd');
+  return items.filter(i => d >= i.start && d <= (i.end || i.start));
+};
 
-  useEffect(() => {
-    const start = startOfMonth(currentDate);
-    const end = endOfMonth(currentDate);
-    setDays(eachDayOfInterval({ start, end }));
-  }, [currentDate]);
+const chipClass = (item, idx) =>
+  item.kind === 'mine' ? 'chip-violet' : item.kind === 'other' ? 'chip-teal' : idx % 2 ? 'chip-green' : 'chip-pink';
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+const MAX_CHIPS = 3;
+
+export default function Calendar({ items, onDayClick }) {
+  const [current, setCurrent] = useState(new Date());
+  const days = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(current), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(current), { weekStartsOn: 1 }),
+  });
+  const order = new Map(items.filter(i => i.kind === 'joint').map((i, n) => [i.id, n]));
 
   return (
-    <div className="card glass">
+    <div className="card glass" style={{ padding: '1.25rem' }}>
       <div className="flex justify-between items-center mb-4">
-        <button onClick={prevMonth} className="btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }}>
-          <ChevronLeft size={20} />
-        </button>
-        <h2 className="font-bold text-lg capitalize">
-          {format(currentDate, 'MMMM yyyy', { locale: es })}
-        </h2>
-        <button onClick={nextMonth} className="btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }}>
-          <ChevronRight size={20} />
-        </button>
+        <button onClick={() => setCurrent(subMonths(current, 1))} className="icon-btn" title="Mes anterior"><ChevronLeft size={22} /></button>
+        <div className="flex items-center gap-3">
+          <h2 className="font-bold text-xl" style={{ textTransform: 'capitalize' }}>{format(current, 'MMMM yyyy', { locale: es })}</h2>
+          <button onClick={() => setCurrent(new Date())} className="badge badge-green">Hoy</button>
+        </div>
+        <button onClick={() => setCurrent(addMonths(current, 1))} className="icon-btn" title="Mes siguiente"><ChevronRight size={22} /></button>
       </div>
 
-      <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px' }}>
-        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
-          <div key={day} className="text-muted text-sm font-semibold">{day}</div>
-        ))}
+      <div className="cal-grid mb-2">
+        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => <div key={d} className="cal-head">{d}</div>)}
       </div>
 
-      <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-        {/* Empty slots for start of month padding */}
-        {Array.from({ length: (startOfMonth(currentDate).getDay() + 6) % 7 }).map((_, i) => (
-          <div key={`empty-${i}`} />
-        ))}
-        
+      <div className="cal-grid">
         {days.map(day => {
-          const plansOnDay = plans.filter(p => {
-            const start = new Date(p.startDate);
-            start.setHours(0,0,0,0);
-            const end = p.endDate ? new Date(p.endDate) : start;
-            end.setHours(23,59,59,999);
-            return day >= start && day <= end;
-          });
-          const hasPlan = plansOnDay.length > 0;
-
+          const list = itemsOnDay(items, day);
           return (
-            <button
-              key={day.toString()}
-              onClick={() => {
-                if (hasPlan && onDateClick) onDateClick(plansOnDay, day);
-              }}
-              className={`btn-outline ${hasPlan ? 'text-pink border-pink' : ''}`}
-              style={{
-                padding: '0.5rem 0',
-                borderRadius: '8px',
-                borderColor: hasPlan ? 'var(--accent-pink)' : 'var(--border-color)',
-                backgroundColor: hasPlan ? 'rgba(255, 71, 133, 0.1)' : 'transparent',
-                fontWeight: hasPlan ? 'bold' : 'normal'
-              }}
+            <div
+              key={day.toISOString()}
+              role="button" tabIndex={0}
+              onClick={() => onDayClick(day, list)}
+              onKeyDown={e => e.key === 'Enter' && onDayClick(day, list)}
+              className={`cal-cell${isToday(day) ? ' today' : ''}${isSameMonth(day, current) ? '' : ' out'}`}
             >
-              {format(day, 'd')}
-            </button>
+              <span className="cal-num">{format(day, 'd')}</span>
+              {list.slice(0, MAX_CHIPS).map(i => {
+                const cls = `cal-chip ${chipClass(i, order.get(i.id))}`;
+                return i.kind === 'joint'
+                  ? <Link key={i.id} to={`/plan/${i.id}`} onClick={e => e.stopPropagation()} className={cls} title={i.name}>{i.name}</Link>
+                  : <span key={i.id} className={cls} title={i.name}>{i.name}</span>;
+              })}
+              {list.length > MAX_CHIPS && <span className="cal-more">+{list.length - MAX_CHIPS} más</span>}
+            </div>
           );
         })}
+      </div>
+
+      <div className="legend mt-4">
+        <span className="badge">Plan conjunto</span>
+        <span className="badge badge-green">Plan conjunto</span>
+        <span className="badge badge-violet">Personal mío</span>
+        <span className="badge badge-teal">Personal del otro</span>
       </div>
     </div>
   );
