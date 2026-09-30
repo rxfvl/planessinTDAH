@@ -10,18 +10,21 @@ export default function Login() {
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
-    if (pin === APP_CONFIG.secretPIN) {
-      setPinUnlocked(true);
-      setError('');
-    } else {
-      setError('PIN incorrecto. Intenta de nuevo.');
-      setPin('');
-    }
+    setPinUnlocked(true);
+    setError('');
   };
 
-  const handleSelectUser = (userName) => {
-    setIdentity(userName);
-    window.location.href = '/';
+  const handleSelectUser = async (userName) => {
+    try {
+      await setIdentity(userName, pin);
+    } catch (err) {
+      console.error(err);
+      setError(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password'
+        ? 'PIN incorrecto. Intenta de nuevo.'
+        : `Error de acceso (${err.code}). Revisa la configuración de Firebase.`);
+      setPin('');
+      setPinUnlocked(false);
+    }
   };
 
   return (

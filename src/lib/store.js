@@ -1,9 +1,11 @@
 import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { APP_CONFIG } from "../config";
 import { getFirestore, collection, addDoc, updateDoc, doc, deleteDoc, query, onSnapshot } from "firebase/firestore";
 
 // REPLACE THESE WITH YOUR FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyDaIG8iJSVarpAKZtsvc0dQIOQ-JVebyrk",
+  apiKey: "AIzaSyDaIG8iJSVarpAKZtSvc0dQIOQ-JVebyrk",
   authDomain: "planesnotdah.firebaseapp.com",
   projectId: "planesnotdah",
   storageBucket: "planesnotdah.firebasestorage.app",
@@ -77,25 +79,19 @@ export const subscribeToPersonalPlans = (cb) => subscribe("personalPlans", cb);
 export const createPersonalPlan = (data) => add("personalPlans", data);
 export const deletePersonalPlan = (id) => remove("personalPlans", id);
 
-// Auth replaced by simple LocalStorage identity
-export const setIdentity = (userName) => {
-  const user = { uid: userName, displayName: userName };
-  localStorage.setItem("appUser", JSON.stringify(user));
-  window.dispatchEvent(new Event('auth_change'));
-  return user;
+// Identidad: Firebase Auth (sesion persistente). El PIN es la contrasena de las cuentas.
+// uid de la app = nombre ("Rufi"/"Lauri"), asi los datos existentes siguen valiendo.
+const emailOf = (name) => `${name.toLowerCase()}@planes.app`;
+const nameOf = (email) => [APP_CONFIG.user1, APP_CONFIG.user2].find(n => emailOf(n) === email);
+
+export const setIdentity = async (userName, pin) => {
+  await signInWithEmailAndPassword(getAuth(app), emailOf(userName), pin);
 };
 
-export const logoutIdentity = () => {
-  localStorage.removeItem("appUser");
-  window.dispatchEvent(new Event('auth_change'));
-};
+export const logoutIdentity = () => signOut(getAuth(app));
 
-export const listenToIdentity = (callback) => {
-  const checkUser = () => {
-    const user = JSON.parse(localStorage.getItem("appUser"));
-    callback(user);
-  };
-  checkUser();
-  window.addEventListener('auth_change', checkUser);
-  return () => window.removeEventListener('auth_change', checkUser);
-};
+export const listenToIdentity = (callback) =>
+  onAuthStateChanged(getAuth(app), (u) => {
+    const name = u && nameOf(u.email);
+    callback(name ? { uid: name, displayName: name } : null);
+  });
