@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { subscribeToPlans, updatePlan, addIdea, subscribeToIdeas, deleteIdea } from '../lib/store';
-import { ArrowLeft, Check, X, ThumbsUp, Trash2, RotateCcw, ListTodo, Pencil } from 'lucide-react';
+import ChecklistSection from '../components/ChecklistSection';
+import { ArrowLeft, Check, X, ThumbsUp, Trash2, RotateCcw, ListTodo, Pencil, ShieldAlert } from 'lucide-react';
 
 export default function PlanDetail({ user }) {
   const { id } = useParams();
   const [plan, setPlan] = useState(null);
   const [newProp, setNewProp] = useState('');
-  const [newReq, setNewReq] = useState('');
   const [ideas, setIdeas] = useState([]);
   const [editing, setEditing] = useState(null); // { id, text }
 
@@ -24,7 +24,6 @@ export default function PlanDetail({ user }) {
   if (!plan) return <div className="p-8 text-center">Cargando plan...</div>;
 
   const proposals = plan.proposals || [];
-  const analysis = plan.analysis || [];
 
   const pendingProps = proposals.filter(p => p.status === 'pending');
   const acceptedProps = proposals.filter(p => p.status === 'accepted');
@@ -102,24 +101,6 @@ export default function PlanDetail({ user }) {
   const handleHardDelete = async (propId) => {
     const updated = proposals.filter(p => p.id !== propId);
     await updatePlan(plan.id, { proposals: updated });
-  };
-
-  const handleAddRequirement = async (e) => {
-    e.preventDefault();
-    if (!newReq.trim()) return;
-    const req = { id: Date.now().toString(), text: newReq, completed: false };
-    await updatePlan(plan.id, { analysis: [...analysis, req] });
-    setNewReq('');
-  };
-
-  const toggleRequirement = async (reqId) => {
-    const updated = analysis.map(a => a.id === reqId ? { ...a, completed: !a.completed } : a);
-    await updatePlan(plan.id, { analysis: updated });
-  };
-
-  const deleteRequirement = async (reqId) => {
-    const updated = analysis.filter(a => a.id !== reqId);
-    await updatePlan(plan.id, { analysis: updated });
   };
 
   return (
@@ -240,41 +221,19 @@ export default function PlanDetail({ user }) {
             )}
           </div>
 
-          <h2 className="text-xl font-semibold mb-4 text-main flex items-center gap-2">
-            <ListTodo size={20} className="text-pink" /> Análisis y Preparativos
-          </h2>
-          <p className="text-sm text-muted mb-4">¿Qué necesitamos para que esto sea perfecto? (Entradas, reservas, maleta...)</p>
+          <ChecklistSection
+            plan={plan} field="analysis" kind="preparativos" icon={ListTodo} accent="var(--accent-pink)"
+            title="Análisis y Preparativos"
+            hint="¿Qué necesitamos para que esto sea perfecto? (Entradas, reservas, maleta...)"
+            placeholder="Ej: Comprar entradas, Reservar mesa..."
+          />
 
-          <form onSubmit={handleAddRequirement} className="mb-6 flex gap-2">
-            <input 
-              type="text" 
-              className="input-field flex-1" 
-              placeholder="Ej: Comprar entradas, Reservar mesa..."
-              value={newReq}
-              onChange={e => setNewReq(e.target.value)}
-            />
-            <button type="submit" className="btn btn-green px-4">Añadir</button>
-          </form>
-
-          <div className="flex flex-col gap-2">
-            {analysis.map(req => (
-              <div key={req.id} className={`flex items-center gap-3 p-3 rounded-lg border ${req.completed ? 'bg-surface-light border-border-color opacity-60' : 'bg-surface-color border-green'}`}>
-                <input 
-                  type="checkbox" 
-                  checked={req.completed} 
-                  onChange={() => toggleRequirement(req.id)}
-                  className="w-5 h-5 accent-green"
-                  style={{ accentColor: 'var(--accent-green)', width: '20px', height: '20px' }}
-                />
-                <span className={`flex-1 ${req.completed ? 'line-through text-muted' : 'text-main'}`}>
-                  {req.text}
-                </span>
-                <button onClick={() => deleteRequirement(req.id)} className="text-muted hover:text-pink">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
+          <ChecklistSection
+            plan={plan} field="contingencies" kind="imprevistos" icon={ShieldAlert} accent="var(--violet-400)"
+            title="Imprevistos y cosas a tener en cuenta"
+            hint="¿Qué podría salir mal y cómo lo cubrimos? (Mal tiempo, retrasos, plan B...)"
+            placeholder="Ej: Si llueve, plan B en el museo..."
+          />
 
         </div>
       </div>

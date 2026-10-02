@@ -88,6 +88,8 @@ export const setIdentity = async (userName, pin) => {
   await signInWithEmailAndPassword(getAuth(app), emailOf(userName), pin);
 };
 
+export const getIdToken = () => getAuth(app).currentUser.getIdToken();
+
 export const logoutIdentity = () => signOut(getAuth(app));
 
 export const listenToIdentity = (callback) =>

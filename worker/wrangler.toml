@@ -1,0 +1,12 @@
+name = "planes-ai"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+FIREBASE_PROJECT_ID = "planesnotdah"
+ALLOWED_EMAILS = "rufi@planes.app,lauri@planes.app"
+# Orígenes permitidos (CORS), separados por comas y sin barra final
+ALLOWED_ORIGINS = "https://planessintdah.netlify.app,http://localhost:5173"
